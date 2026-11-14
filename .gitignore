@@ -1,0 +1,6 @@
+build/
+bpf/vmlinux.h
+*.skel.h
+*.o
+*.ctap
+node_modules/
