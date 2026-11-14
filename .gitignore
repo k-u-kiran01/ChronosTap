@@ -4,3 +4,4 @@ bpf/vmlinux.h
 *.o
 *.ctap
 node_modules/
+rand.txt
