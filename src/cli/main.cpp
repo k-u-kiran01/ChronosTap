@@ -1,4 +1,3 @@
-// src/cli/main.cpp
 #include <iostream>
 #include <csignal>
 #include <fcntl.h>
@@ -8,22 +7,34 @@
 #include "common.h"
 #include "recorder.skel.h"
 #include "redirector.skel.h"
+#include "chronostap/protocol/pg_wire.hpp"
+#include "chronostap/storage/cas_store.hpp"
 
 static volatile bool keep_running = true;
 void sig_handler(int) { keep_running = false; }
 
+static chronostap::PgWireTracker pg_tracker;
+static chronostap::CasStore cas_store(".ctap_store");
+
 static int handle_event(void *ctx, void *data, size_t data_sz) {
     const auto *e = static_cast<const struct socket_event *>(data);
-    const char *dir_str = (e->direction == DIR_INGRESS_READ) ? "<-- INGRESS READ" : "--> EGRESS WRITE";
 
-    std::cout << "[" << dir_str << " | PID " << e->pid << " | FD " << e->fd
-              << " | " << e->payload_len << " bytes | t=" << e->timestamp_ns << " ns]\n";
+    if (e->direction == DIR_EGRESS_WRITE) {
+        if (pg_tracker.on_app_write(e->fd, e->payload, e->payload_len, e->timestamp_ns)) {
+            std::cout << "[PG QUERY DETECTED on FD " << e->fd << "]\n";
+        }
+    } else if (e->direction == DIR_INGRESS_READ) {
+        chronostap::PgQueryExchange completed;
+        if (pg_tracker.on_app_read(e->fd, e->payload, e->payload_len, e->timestamp_ns, completed)) {
+            std::string hash = cas_store.save_exchange(completed);
+            double latency_ms = (completed.response_received_ns - completed.query_sent_ns) / 1e6;
 
-    for (unsigned int i = 0; i < e->payload_len; ++i) {
-        char c = e->payload[i];
-        std::cout << ((c >= 32 && c <= 126) || c == '\n' ? c : '.');
+            std::cout << "  -> SQL: " << completed.sql_query << "\n"
+                      << "  -> DB Latency: " << latency_ms << " ms (" << completed.raw_db_reply.size() << " bytes)\n"
+                      << "  -> Saved CAS Blob: .ctap_store/blobs/" << hash.substr(0, 12) << "...bin\n"
+                      << "----------------------------------------\n";
+        }
     }
-    std::cout << "\n----------------------------------------\n";
     return 0;
 }
 

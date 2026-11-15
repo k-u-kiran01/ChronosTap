@@ -1,0 +1,1 @@
+{"sql":"SELECT NOW(), 10 + 20 AS sum;","latency_ns":8166305,"reply_bytes":117,"blob_sha256":"1f48f5a9090c8926de426b897593d47198c0450c4dfd4bdb1cbe5aaef589bbc4"}
