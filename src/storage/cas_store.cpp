@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include "chronostap/sql_ast/canonicalizer.hpp"
 
 namespace fs = std::filesystem;
 
@@ -41,10 +42,11 @@ std::string CasStore::save_exchange(const PgQueryExchange& ex) {
     }
 
     uint64_t latency_ns = ex.response_received_ns - ex.query_sent_ns;
+    std::string canonical = SqlCanonicalizer::canonicalize(ex.sql_query);
 
-    // Append metadata record to index log
     std::ofstream index_out(base_dir_ + "/index.jsonl", std::ios::app);
-    index_out << "{\"sql\":\"" << ex.sql_query << "\","
+    index_out << "{\"canonical_sql\":\"" << canonical << "\","
+              << "\"raw_sql\":\"" << ex.sql_query << "\","
               << "\"latency_ns\":" << latency_ns << ","
               << "\"reply_bytes\":" << ex.raw_db_reply.size() << ","
               << "\"blob_sha256\":\"" << sha256 << "\"}\n";

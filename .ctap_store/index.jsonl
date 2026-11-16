@@ -1,1 +1,4 @@
 {"sql":"SELECT NOW(), 10 + 20 AS sum;","latency_ns":8166305,"reply_bytes":117,"blob_sha256":"1f48f5a9090c8926de426b897593d47198c0450c4dfd4bdb1cbe5aaef589bbc4"}
+{"canonical_sql":"SELECT NOW (), 10 + 20 AS SUM","raw_sql":"select   now( ),  10+20   as sum ;","latency_ns":10224521,"reply_bytes":117,"blob_sha256":"e568cd15210d1dac4372f84facfab558b726d8b81fb49faec997f3ad48dbcd27"}
+{"canonical_sql":"SELECT 1 FROM PG_ROLES WHERE ROLCANLOGIN = TRUE AND ROLSUPER = TRUE","raw_sql":"SELECT 1 FROM pg_roles WHERE rolcanlogin = true AND rolsuper = true;","latency_ns":12687117,"reply_bytes":78,"blob_sha256":"29cae1406244854ec8f7d91e4467aff2ddb7c4171842dac014754d6e9c769ac4"}
+{"canonical_sql":"SELECT 1 FROM PG_ROLES WHERE ROLCANLOGIN = TRUE AND ROLSUPER = TRUE","raw_sql":"SELECT 1 FROM pg_roles WHERE rolsuper = true AND rolcanlogin = true;","latency_ns":570228,"reply_bytes":78,"blob_sha256":"29cae1406244854ec8f7d91e4467aff2ddb7c4171842dac014754d6e9c769ac4"}

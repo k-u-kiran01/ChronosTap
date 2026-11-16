@@ -9,6 +9,7 @@
 #include "redirector.skel.h"
 #include "chronostap/protocol/pg_wire.hpp"
 #include "chronostap/storage/cas_store.hpp"
+#include "chronostap/sql_ast/canonicalizer.hpp"
 
 static volatile bool keep_running = true;
 void sig_handler(int) { keep_running = false; }
@@ -31,6 +32,12 @@ static int handle_event(void *ctx, void *data, size_t data_sz) {
 
             std::cout << "  -> SQL: " << completed.sql_query << "\n"
                       << "  -> DB Latency: " << latency_ms << " ms (" << completed.raw_db_reply.size() << " bytes)\n"
+                      << "  -> Saved CAS Blob: .ctap_store/blobs/" << hash.substr(0, 12) << "...bin\n"
+                      << "----------------------------------------\n";
+           
+            std::cout << "  -> Raw SQL:       " << completed.sql_query << "\n"
+                      << "  -> Canonical AST: " << chronostap::SqlCanonicalizer::canonicalize(completed.sql_query) << "\n"
+                      << "  -> DB Latency:    " << latency_ms << " ms (" << completed.raw_db_reply.size() << " bytes)\n"
                       << "  -> Saved CAS Blob: .ctap_store/blobs/" << hash.substr(0, 12) << "...bin\n"
                       << "----------------------------------------\n";
         }
