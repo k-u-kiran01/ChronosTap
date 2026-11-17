@@ -4,6 +4,12 @@
 #include <cctype>
 #include <sstream>
 
+extern int yyparse();
+typedef struct yy_buffer_state* YY_BUFFER_STATE;
+extern YY_BUFFER_STATE yy_scan_string(const char* str);
+extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
+extern std::string g_canonical_output;
+
 namespace chronostap {
 
 std::vector<Token> SqlCanonicalizer::tokenize(const std::string& sql) {
@@ -152,6 +158,18 @@ std::string SqlCanonicalizer::serialize(const std::vector<Token>& tokens) {
 }
 
 std::string SqlCanonicalizer::canonicalize(const std::string& raw_sql) {
+    g_canonical_output.clear();
+
+    // 1. Parse in-memory SQL string using Flex + Bison LALR(1) AST
+    YY_BUFFER_STATE buf = yy_scan_string(raw_sql.c_str());
+    int status = yyparse();
+    yy_delete_buffer(buf);
+
+    if (status == 0 && !g_canonical_output.empty()) {
+        return g_canonical_output;
+    }
+
+    // 2. Fallback to lexer normalization for non-SELECT utility commands
     auto tokens = tokenize(raw_sql);
     sort_where_and_clauses(tokens);
     return serialize(tokens);
