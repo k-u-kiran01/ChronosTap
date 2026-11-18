@@ -1,1 +1,0 @@
-{"method":"GET","path":"/api/sum","status":200,"latency_ns":29886580,"body":"{\"now\":\"2026-11-14T18:07:06.684Z\",\"sum\":30}"}

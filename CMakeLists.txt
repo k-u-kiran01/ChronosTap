@@ -52,3 +52,16 @@ target_include_directories(chronostap PRIVATE
 )
 
 target_link_libraries(chronostap PRIVATE bpf elf z OpenSSL::Crypto pthread)
+
+enable_testing()
+add_executable(test_ast
+    tests/unit/test_ast.cpp
+    src/sql_ast/canonicalizer.cpp
+    ${BISON_SqlParser_OUTPUTS}
+    ${FLEX_SqlLexer_OUTPUTS}
+)
+target_include_directories(test_ast PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_BINARY_DIR}/generated
+)
+add_test(NAME SqlAstCanonicalizerTest COMMAND test_ast)

@@ -1,7 +1,7 @@
 build/
-bpf/vmlinux.h
-*.skel.h
-*.o
-*.ctap
+.ctap_store/
 node_modules/
-rand.txt
+include/*.skel.h
+*.o
+*.pb.h
+*.pb.cc

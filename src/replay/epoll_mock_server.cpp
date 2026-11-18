@@ -1,5 +1,6 @@
 // src/replay/epoll_mock_server.cpp
 #include "chronostap/replay/epoll_mock_server.hpp"
+#include "chronostap/protocol/pg_wire.hpp"
 #include "chronostap/sql_ast/canonicalizer.hpp"
 
 #include <arpa/inet.h>
@@ -117,22 +118,17 @@ void EpollMockServer::handle_client_bytes(int epoll_fd, int client_fd, const uin
         return;
     }
 
-    // 2. Handle Simple Query ('Q')
-    if (buf[0] == 'Q' && len >= 6) {
-        uint32_t net_len = 0;
-        std::memcpy(&net_len, buf + 1, 4);
-        uint32_t msg_len = ntohl(net_len);
-        if (msg_len >= 5 && msg_len + 1 <= len) {
-            std::string raw_sql(reinterpret_cast<const char*>(buf + 5), msg_len - 5);
-            std::string canonical = SqlCanonicalizer::canonicalize(raw_sql);
+    // 2. Handle Simple Query ('Q') or Extended Parse ('P')
+    std::string raw_sql;
+    if (PgWireTracker::extract_sql_from_packet(reinterpret_cast<const char*>(buf), len, raw_sql)) {
+        std::string canonical = SqlCanonicalizer::canonicalize(raw_sql);
 
-            auto it = mock_table_.find(canonical);
-            if (it != mock_table_.end()) {
-                schedule_delayed_reply(epoll_fd, client_fd, it->second);
-            } else {
-                std::cout << "[-] MOCK MISS for Canonical AST: " << canonical << "\n";
-                send_pg_error(client_fd, "ChronosTap Mock Not Found for AST: " + canonical);
-            }
+        auto it = mock_table_.find(canonical);
+        if (it != mock_table_.end()) {
+            schedule_delayed_reply(epoll_fd, client_fd, it->second);
+        } else {
+            std::cout << "[-] MOCK MISS for Canonical AST: " << canonical << "\n";
+            send_pg_error(client_fd, "ChronosTap Mock Not Found for AST: " + canonical);
         }
         return;
     }

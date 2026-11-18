@@ -39,7 +39,12 @@ struct AstNode {
         if (kind == "COMM_OP") { // Commutative operators: =, +, *
             std::string left = children[0]->serialize();
             std::string right = children[1]->serialize();
-            if (right < left) std::swap(left, right);
+            auto rank = [](const std::string& s) {
+                return (!s.empty() && s[0] == '\'') ? 1 : 0;
+            };
+            if (std::make_pair(rank(right), right) < std::make_pair(rank(left), left)) {
+                std::swap(left, right);
+            }
             return left + " " + text + " " + right;
         }
         if (kind == "BIN_OP") { // Non-commutative operators: -, /, <, >

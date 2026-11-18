@@ -80,8 +80,11 @@ bool HttpTracker::on_app_write(int fd, const char* data, size_t len, uint64_t ts
 }
 
 void HttpTracker::save_http_trace(const HttpExchange& ex, const std::string& store_dir) {
+    static std::ofstream out(store_dir + "/http_traces.jsonl", std::ios::app);
+    if (!out.is_open()) {
+        out.open(store_dir + "/http_traces.jsonl", std::ios::app);
+    }
     uint64_t latency_ns = ex.resp_end_ns - ex.req_start_ns;
-    std::ofstream out(store_dir + "/http_traces.jsonl", std::ios::app);
     out << "{\"method\":\"" << ex.method << "\","
         << "\"path\":\"" << ex.path << "\","
         << "\"status\":" << ex.status_code << ","

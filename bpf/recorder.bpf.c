@@ -7,6 +7,7 @@
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 const volatile unsigned int target_pid = 0;
+unsigned long long ringbuf_drops = 0;
 const volatile unsigned long long pidns_dev = 0;
 const volatile unsigned long long pidns_ino = 0;
 
@@ -73,6 +74,7 @@ static __always_inline int trace_read_exit(struct trace_event_raw_sys_exit *ctx)
 
     struct socket_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
     if (!e) {
+        __sync_fetch_and_add(&ringbuf_drops, 1);
         bpf_map_delete_elem(&active_reads, &id);
         return 0;
     }
@@ -108,8 +110,10 @@ static __always_inline int trace_write_entry(struct trace_event_raw_sys_enter *c
         return 0;
 
     struct socket_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
-    if (!e)
+    if (!e) {
+        __sync_fetch_and_add(&ringbuf_drops, 1);
         return 0;
+    }
 
     e->pid = pid;
     e->fd = fd;
@@ -172,7 +176,10 @@ int handle_enter_writev(struct trace_event_raw_sys_enter *ctx) {
             break;
 
         struct socket_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
-        if (!e) break;
+        if (!e) {
+            __sync_fetch_and_add(&ringbuf_drops, 1);
+            break;
+        }
 
         e->pid = pid;
         e->fd = fd;
