@@ -142,3 +142,48 @@ int handle_enter_sendto(struct trace_event_raw_sys_enter *ctx) { return trace_wr
 
 SEC("tp/syscalls/sys_enter_write")
 int handle_enter_write(struct trace_event_raw_sys_enter *ctx) { return trace_write_entry(ctx); }
+
+struct user_iovec {
+    const char *iov_base;
+    size_t iov_len;
+};
+
+SEC("tp/syscalls/sys_enter_writev")
+int handle_enter_writev(struct trace_event_raw_sys_enter *ctx) {
+    u64 id = bpf_get_current_pid_tgid();
+    u32 pid = get_resolved_pid(id);
+    if (pid != target_pid)
+        return 0;
+
+    int fd = (int)ctx->args[0];
+    if (fd <= 2) return 0;
+
+    const struct user_iovec *vec = (const struct user_iovec *)ctx->args[1];
+    unsigned long vlen = (unsigned long)ctx->args[2];
+    if (vlen == 0) return 0;
+
+    // Emit up to the first 2 iovec chunks (iov[0] = HTTP Headers, iov[1] = HTTP Body)
+    #pragma unroll
+    for (int i = 0; i < 2; ++i) {
+        if (i >= vlen) break;
+
+        struct user_iovec iov = {};
+        if (bpf_probe_read_user(&iov, sizeof(iov), &vec[i]) != 0 || iov.iov_len == 0)
+            break;
+
+        struct socket_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+        if (!e) break;
+
+        e->pid = pid;
+        e->fd = fd;
+        e->timestamp_ns = bpf_ktime_get_ns();
+        e->direction = DIR_EGRESS_WRITE;
+
+        u32 copy_size = iov.iov_len < MAX_PAYLOAD_SIZE ? iov.iov_len : MAX_PAYLOAD_SIZE;
+        e->payload_len = copy_size;
+        bpf_probe_read_user(e->payload, copy_size, iov.iov_base);
+
+        bpf_ringbuf_submit(e, 0);
+    }
+    return 0;
+}
